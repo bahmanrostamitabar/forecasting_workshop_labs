@@ -1,0 +1,166 @@
+---
+title: "time series patterns/graphics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(feasts)
+library(tsibble)
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(tsbox)
+library(dygraphs)
+
+admission_hourly <- read_rds("data/admission_hourly.rds")
+admission_daily <- read_rds("data/admission_daily.rds")
+```
+
+# Lab 2: time series patterns/graphics
+
+## time plot
+
+You can create time plot using `autoplot()` function
+
+```{r ts-plot}
+??? |> ???(???) # create a time plot of daily data
+??? |> ???() # create a time plot of hourly data
+```
+
+You can use filter_index or head() and tail() to select a subset of time series , try ?filter_index or google it
+
+
+```{r filter-index}
+admission_daily |> tsibble::???(???) |> autoplot(arrival) # plot only February 2016 
+admission_daily |> tsibble::???(???) |> autoplot(arrival) # plot from February 2016 till the end
+admission_daily |> tsibble::???(???) |> autoplot(arrival) # plot from February 2016 till the end
+admission_hourly |> tsibble::filter_index(???) |> autoplot(arrival) # plot only 2015-01-01
+admission_daily |> ???(???) |> autoplot() # first 100 observations
+admission_daily |> ???(???) |> autoplot()  # last 100 observations
+```
+
+It could be really hard to visualise hourly or daily data, one possibility is to view a portion of the data, you can also use  interactive plots:
+
+```{r admission-dygraph}
+tsbox::ts_xts(admission_daily) |> 
+  dygraph() |> 
+  dyRangeSelector(dateWindow = c("2010-01-01", "2010-02-01"))
+
+tsbox::ts_xts(admission_hourly) |> 
+  dygraph() |> 
+  dyRangeSelector(dateWindow = c("2010-01-01", "2010-01-02"))
+```
+
+You can also plot monthly, weekly, quarterly time series using ggplot2 package, see below for an example
+
+```{r monthly-plot}
+  monthly_admissions |> 
+  autoplot(arrival) +
+  labs(y = "arrival", x="Month",
+       title = "Monthly A&E arrival",
+       subtitle = "UK hospital")
+```
+
+## Seasonal plots
+
+use seasonal and subseries plots to check whether series contain seasonality 
+
+```{r seasonal-plot}
+admission_daily |> feasts::???(???) #seasonal plot
+admission_daily |> feasts::???(???)# subseries plot
+```
+
+You can also try this with hourly series, you can change the "period= ..." argument to see different types of seasonality
+
+```{r multiple-seasonality}
+??? |> feasts::???(arrival, ???) 
+??? |> feasts::???(arrival, ???)
+
+??? |> feasts::???(arrival, ???) 
+??? |> feasts::???(arrival, ???)
+```
+
+Is there any seasonality in the daily time series? what about hourly and monthly?
+
+
+How do you create a seasonal plot for the weekly, monthly and quarterly series series
+
+```{r weekly-seasonality}
+weekly_admissions <- admission_daily |> 
+  index_by(week = yearweek(date)) |>
+  summarise(arrival = sum(arrival))
+???(weekly_admissions)
+???(weekly_admissions)
+```
+
+```{r monthly-seasonality}
+monthly_admissions <- admission_daily |> 
+  index_by(month = yearmonth(date)) |>
+  summarise(arrival = sum(arrival))
+???(monthly_admissions)
+???(monthly_admissions)
+
+```
+
+
+```{r quarterly-seasonality}
+quarterly_admissions <- admission_daily |> 
+  index_by(quarter = yearquarter(date)) |>
+  summarise(arrival = sum(arrival))
+???(quarterly_admissions)
+???(quarterly_admissions)
+```
+
+## autocorrelation plot
+
+```{r acf-calcul}
+admission_daily |>
+  feasts::???(arrival, lags = ???, geom = "point")# create lag plots for 14 lags, from 1 to 14
+admission_daily |> feasts::???(lag_max = ???)# compute autocorrelation function for 14 lags
+```
+
+plot the autocorrelation 
+
+```{r acf-plot}
+admission_hourly |> ???(lag_max = ???) |> ???()# plot acf
+admission_daily |> ???(lag_max = ???) |> ???()# plot acf
+```
+
+You can have a time plot, acf and season plot in one single plot if you use `gg_tsdisplay()` function
+
+```{r multiple-plot-, options}
+admission_hourly |> ???()#  
+admission_daily |> ???()#  
+```
+
+You can use ljung box to test whether ACF is significant, if p-value is small, << 0.05 then there is a significant autocorrelation:
+
+```{r ljung-box-test}
+admission_daily |> ???(???, ljung_box)
+```
+
+What autocorrelation will tell us? Which key features could be highlighted by ACF?
+
+## Make any graph using ggplot2 (optional)
+
+You can create any graph that helps you to better understand data! I recommend you to look at the distributions of your variables, try geom_boxplot() , geom_histogram() and geom_density() which are helpful to better understand the variations
+
+Here I tried to see if arrival of males or females is different over the weekend comparing to the weekday
+
+```{r weekend}
+weekend_an_weekday <- admission_hourly |> group_by(gender) |> 
+  summarise(arrival=sum(arrival)) |> 
+  mutate(
+    Date=lubridate::as_date(time),
+    hour=lubridate::hour(time),
+    Day = lubridate::wday(time, label = TRUE),
+    Weekend = (Day %in% c("Sun", "Sat"))) |> 
+  filter(gender =="female") 
+weekend_an_weekday |> ggplot(aes(x = hour, y = arrival)) +
+  geom_line(aes(group=Date)) +
+  facet_grid(Weekend ~., scales="free_y")
+```
+
+  
+  

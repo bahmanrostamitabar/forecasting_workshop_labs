@@ -1,0 +1,83 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-01-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(fpp3)
+library(tidyverse)
+arrival_daily_keys <- read_rds("data/arrival_hourly_keys.rds")
+```
+
+# Lab 3: time series features
+
+For the daily admissions time series with keys (with gender, injury), extract the strength of trend and seasonality
+
+  *Do you see any useful insight?*
+
+```{r label, options}
+arrival_daily_keys |>
+  features(arrival, feat_stl)
+```
+
+Use ``GGally::ggpairs()`` to look at the relationships between the STL-based features. You might wish to change `seasonal_peak_year` and `seasonal_trough_year` to factors.
+
+```{r label, options}
+ library(GGally)
+tourism |>
+  ???(???, ???) |>
+  select(-Region, -State, -Purpose) |>
+  mutate(
+    seasonal_peak_year = factor(???),
+    seasonal_trough_year = factor(???),
+  ) |>
+  ggpairs()
+```
+ 
+ 
+Which is the peak quarter for holidays in each state?
+
+```{r label, options}
+tourism |>
+  ???(State) |>
+  ???(Trips = ???(Trips)) |>
+  ???(???, ???) |>
+  select(State, seasonal_peak_year)
+```
+ 
+
+Use a feature-based approach to look for outlying series in `PBS`. What is unusual about the series you identify as outliers?
+
+```{r label, options}
+library(broom)
+
+## Compute features
+PBS_feat <- PBS |>
+  ????(Cost, feature_set(pkgs = "feasts")) |>
+  na.omit()
+
+## Compute principal components
+PBS_prcomp <- PBS_feat |>
+  select(-Concession, -Type, -ATC1, -ATC2) |>
+  ???(scale = TRUE) |>
+  ???(PBS_feat)
+
+## Plot the first two components
+PBS_prcomp |>
+  ggplot(aes(x = ???, y = ???)) +
+  geom_point()
+
+## Pull out most unusual series from first principal component
+outliers <- PBS_prcomp |>
+  filter(.fittedPC1 > 7)
+outliers
+
+## Visualise the unusual series
+PBS |>
+  semi_join(outliers, by = c("Concession", "Type", "ATC1", "ATC2")) |>
+  autoplot(Cost) +
+  facet_grid(vars(Concession, Type, ATC1, ATC2)) +
+  labs(title = "Outlying time series in PC space")
+```

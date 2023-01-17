@@ -1,0 +1,187 @@
+---
+title: "Prepare data for time series analysis and forecasting"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fpp3)
+library(lubridate)
+```
+
+# Lab 1: Prepare data for forecasting
+
+## Read data
+
+```{r admision}
+arrival <- read_csv(
+  file = "data/ae_uk.csv") |> mutate(arrival_time= dmy_hm(arrival_time))
+```
+
+## Check duplications and fix it
+
+```{r duplicate}
+#2.1- 
+arrival |> duplicated() |> sum()#check duplicates
+
+arrival_wd <- arrival |> dplyr::distinct()# remove duplicates and get a distinct tibble
+```
+
+## Create tsibble
+
+```{r tsibble}
+arrival_tsb <- arrival_wd |> 
+  as_tsibble(??? = ???, ???=,???, ??? = ???)
+class(arrival_tsb)# check the class
+arrival_tsb |> as_tibble()#this converts a tsibble to a tibble
+```
+
+
+## Create a new tsibble which has a regular interval
+
+_Choosing appropriate temporal intervals to make equally space intervals_
+
+Here we discuss only equally spaced intervals in time series. so, if your data has an irregular index, e.g. arrival time, arrival time, call time, etc, you need to use `regular= ---` in as_tsibble, following that you need to regularise the irregular index by creating a new tsibble with equally spaced intervals which we call time period or temporal granularity. This will help you to create time series with different granularity such as sub-daily(half-an hourly , hourly, ...), daily, weekly, monthly, quarterly time series.
+
+What temporal granularity should `arrivals` have?
+
+A balancing act between:
+
+-   The temporal detail needed for the forecasts
+-   Enough detail/signal in the data for a good model
+
+This choice has a big impact on the seasonal structures that will exist in the data!
+
+How to create 30 minutes interval using the following r chunk?
+
+```{r half-hourly, options}
+arrival_half_hourly_keys <- arrival_tsb |> dplyr::???(gender,type_injury) |> 
+  index_by(time = lubridate::???(???, ???)) |>
+  summarise(arrival= ???, .groups = "drop")
+write_rds(arrival_half_hourly_keys,"data/arrival_half_hourly_keys.rds")
+```
+
+**How floor_date() works**
+
+To see how `lubridate::floor_date()` works, you can run the following examples line by line, chek the time YEAR-MONTH-DAY HOUR:MIN:SEC
+
+```{r check-floor-date}
+lubridate::floor_date(ymd_hms("2010-01-01 20:48:10"), "15 minutes")
+
+lubridate::floor_date(ymd_hms("2010-01-01 20:48:10"), "30 minutes")
+
+lubridate::floor_date(ymd_hms("2010-01-01 20:48:10"), "1 hour")
+
+lubridate::floor_date(ymd_hms("2010-01-01 04:28:52"), "30 minutes")
+
+lubridate::floor_date(ymd_hms("2010-01-01 04:18:00"), "30 minutes")
+
+lubridate::floor_date(ymd_hms("2010-01-01 14:52:00"), "30 minutes")
+```
+
+## Check implicit missing values / gaps in time and fill gaps
+
+```{r implicit-missing-value}
+???(arrival_half_hourly_keys)#check gaps
+???(arrival_half_hourly_keys)# show me gaps
+???(arrival_half_hourly_keys)# count gaps
+```
+
+If there is any gap, then fill it.
+
+```{r hourly}
+arrival_half_hourly_keys <- arrival_half_hourly_keys |> ???(???)
+write_rds("data/arrival_hourly_keys.rds",arrival_hourly_keys)
+```
+
+You can use `index_by()` and `summarise()` to regularise index and create different temporal granularity.
+
+arrival_hourly_keys is now a *tsibble* with regular space (temporal granularity) of 30 minutes, you can change it to any interval,e.g. "15 minutes", "2 hours" "2 hours","3 hours","1 day" etc or create any granular level from the hourly series such as daily, weekly , etc
+
+Here, we can create hourly and daily arrivals:
+
+```{r hourly}
+arrival_hourly_keys <- arrival_tsb |>
+  dplyr::???(gender,type_injury) |> 
+???(time = lubridate::floor_date(arrival_time, "1 hour")) |>
+  ???(arrival= n(), .groups = "drop") |> ???(???)
+```
+
+```{r daily}
+arrival_daily_keys <- arrival_tsb |>
+  dplyr::???(gender,type_injury) |> 
+???(time = lubridate::???(???, "1 hour")) |>
+  ???(arrival= n(), .groups = "drop") |> ???(???)
+
+write_rds(arrival_daily_keys,"data/arrival_hourly_keys.rds")
+
+```
+
+## Create  time series with different time granularities
+
+What happens if you ignore groub_by() in the r chunk?
+
+```{r half-hourly, options}
+arrival_half_hourly <- arrival_tsb |>
+???(time = lubridate::floor_date(arrival_time, "30 minutes")) |>
+  ???(arrival= n(), .groups = "drop") |> ???(???)
+write_rds("data/arrival_half_hourly.rds",arrival_half_hourly)
+```
+
+How to create 1 hour interval using the following r chunk?
+
+```{r hourly}
+arrival_hourly <- arrival_tsb |> 
+  ???(time = lubridate::???(???, ???)) |>
+  summarise(arrival= ???, .groups = "drop") |> ???(???)
+write_rds(arrival_hourly, "data/arrival_hourly.rds")
+```
+
+How would you create a daily granularity using an hourly one?
+
+```{r daily}
+arrival_daily <- arrival_hourly |> 
+  ???(date=lubridate::???(???)) |> 
+  summarise(???=???(???))
+write_rds(arrival_daily,"data/arrival_daily.rds")
+```
+
+How would you create weekly granularity?
+
+```{r weekly}
+# you can create weekly_arrivals from arrival_hourly or arrival_daily 
+
+weekly_arrivals <- ??? |> ???(week = ???(???)) |>
+  summarise(arrival = ???(???))
+```
+
+How would you create a monthly granularity?
+
+```{r monthly}
+
+# you can create monthly_arrivals from arrival_hourly or arrival_daily 
+monthly_arrivals <- ??? |>  
+  ???(month = ???(???)) |>
+  ???(arrival = ???(???))
+```
+
+How would you create quarterly granularity?
+
+```{r quarterly}
+
+# you can create quarterly_arrivals from arrival_hourly or arrival_daily 
+quarterly_arrivals <- ??? |> 
+  ???(quarter = ???(???)) |>
+  summarise(arrival = ???(???))
+```
+
+## Optional: check an exampel with regular index
+
+```{r regular-index, options}
+prison <- read_csv("data/prison_population.csv")
+
+prison_tsb <- ??? |> 
+  ???(index = ???, key = ???)
+  
+```
